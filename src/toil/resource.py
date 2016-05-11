@@ -251,6 +251,31 @@ class DirectoryResource(Resource):
     directory.
     """
 
+    @staticmethod
+    def __writePyZipProg(zipFile, leaderPath):
+        """
+        Convert a program script, which will not have a .py extension, to a module
+        and add it to the zip file.
+        """
+        # make a copy in a tmp directory with the right name
+        tmpDir = tempfile.mkdtemp("toilpyzip")
+        tmpPy = os.path.join(tmpDir, os.path.basename(leaderPath)+".py")
+        shutil.copyfile(leaderPath, tmpPy)
+        zipFile.writepy(tmpPy)
+        shutil.rmtree(tmpDir)
+
+    @staticmethod
+    def __writePyZip(zipFile, leaderPath):
+        """
+        Write path to PyZipFile, with special handling of python program scripts
+        than convert them to modules.
+        """
+        if os.path.isfile(leaderPath) and not leaderPath.endswith(".py"):
+            DirectoryResource.__writePyZipProg(zipFile, leaderPath)
+        else:
+            zipFile.writepy(leaderPath)
+        
+
     @classmethod
     def _load(cls, leaderPath):
         """
@@ -260,7 +285,7 @@ class DirectoryResource(Resource):
         # PyZipFile compiles .py files on the fly, filters out any non-Python files and
         # distinguishes between packages and simple directories.
         with PyZipFile(file=bytesIO, mode='w') as zipFile:
-            zipFile.writepy(leaderPath)
+            DirectoryResource.__writePyZip(zipFile, leaderPath)
         bytesIO.seek(0)
         return bytesIO
 
