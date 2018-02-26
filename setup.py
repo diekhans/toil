@@ -74,6 +74,10 @@ def runSetup():
     if sys.platform != 'linux' or 'linux2':
         all_reqs.remove(htcondor)
 
+    py2_requires = []
+    if sys.version_info.major == 2:
+        py2_requires += ['subprocess32==3.5.0rc1']
+
     setup(
         name='toil',
         version=version.distVersion,
@@ -89,8 +93,7 @@ def runSetup():
             'six>=1.10.0',
             'future',
             'requests==2.18.4',
-            'docker==2.5.1',
-            'subprocess32==3.5.0rc1'],
+            'docker==2.5.1'] + py2_requires,
         extras_require={
             'mesos': mesos_reqs,
             'aws': aws_reqs,
@@ -149,7 +152,7 @@ def importVersion():
                 raise
 
         if old != new:
-            with NamedTemporaryFile(dir='src/toil', prefix='version.py.', delete=False) as f:
+            with NamedTemporaryFile(mode='w', dir='src/toil', prefix='version.py.', delete=False) as f:
                 f.write(new)
             os.rename(f.name, 'src/toil/version.py')
     # Unfortunately, we can't use a straight import here because that would also load the stuff
