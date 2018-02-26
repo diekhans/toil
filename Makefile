@@ -265,43 +265,44 @@ clean: clean_develop clean_sdist clean_pypi clean_docs
 
 check_build_reqs:
 	@$(python) -c 'import mock; import pytest' \
-		|| ( printf "$(red)Build requirements are missing. Run 'make prepare' to install them.$(normal)\n" ; false )
+		|| ( printf "$(red)Build requirements are missing. Run 'make prepare' to install them.$(normal)\n" >&2 ; false )
 
 
 prepare: check_venv
 	$(pip) install sphinx==1.5.5 mock==1.0.1 pytest==2.8.3 stubserver==1.0.1 \
 		pytest-timeout==1.2.0
 
-
+# This checks that we are in a virtualenv and that the actual python command is in
+# a virtualenv, not one outside of it.
 check_venv:
-
-	@$(python) -c 'import sys; sys.exit( int( not (hasattr(sys, "real_prefix") or ( hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix ) ) ) )' \
-		|| ( printf "$(red)A virtualenv must be active.$(normal)\n" ; false )
+	@[ "$$VIRTUAL_ENV" != "" ] || (printf "$(red)A virtualenv must be active.$(normal)\n" >&2 ; false)
+	@$(python) -c 'import sys, os; sys.exit(int(sys.prefix != os.environ["VIRTUAL_ENV"]))' \
+		|| ( printf "$(red)Must be running a python interpreter that is in the current virtualenv.$(normal)\n" >&2 ; false )
 
 
 check_clean_working_copy:
 	@printf "$(green)Checking if your working copy is clean ...$(normal)\n"
 	@git diff --exit-code > /dev/null \
-		|| ( printf "$(red)Your working copy looks dirty.$(normal)\n" ; false )
+		|| ( printf "$(red)Your working copy looks dirty.$(normal)\n" >&2 ; false )
 	@git diff --cached --exit-code > /dev/null \
-		|| ( printf "$(red)Your index looks dirty.$(normal)\n" ; false )
+		|| ( printf "$(red)Your index looks dirty.$(normal)\n" >&2 ; false )
 	@test -z "$$(git ls-files --other --exclude-standard --directory)" \
-		|| ( printf "$(red)You have untracked files:$(normal)\n" \
-			; git ls-files --other --exclude-standard --directory \
+		|| ( printf "$(red)You have untracked files:$(normal)\n" >&2 \
+			; git ls-files --other --exclude-standard --directory >&2 \
 			; false )
 
 
 check_running_on_jenkins:
 	@printf "$(green)Checking if running on Jenkins ...$(normal)\n"
 	@test -n "$$BUILD_NUMBER" \
-		|| ( printf "$(red)This target should only be invoked on Jenkins.$(normal)\n" ; false )
+		|| ( printf "$(red)This target should only be invoked on Jenkins.$(normal)\n" >&2 ; false )
 
 
 check_docker_registry:
 	@test "$(default_docker_registry)" != "$(TOIL_DOCKER_REGISTRY)" || test -n "$$BUILD_NUMBER" \
 		|| ( printf '$(red)Please set TOIL_DOCKER_REGISTRY to a value other than \
 	$(default_docker_registry) and ensure that you have permissions to push \
-	to that registry. Only CI builds should push to $(default_docker_registry).$(normal)\n' ; false )
+	to that registry. Only CI builds should push to $(default_docker_registry).$(normal)\n' >&2 ; false )
 
 check_cpickle:
 	# fail if cPickle.dump(s) called without HIGHEST_PROTOCOL
